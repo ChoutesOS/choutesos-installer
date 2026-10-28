@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Install ChoutesOS
+Comment=Install ChoutesOS to this computer
+Exec=choutesos-installer
+Icon=choutesos
+Terminal=false
+Categories=System;

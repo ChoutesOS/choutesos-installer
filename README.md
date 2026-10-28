@@ -6,33 +6,43 @@
   <b>The offline graphical installer for ChoutesOS.</b>
 </p>
 
-<p align="center">
-  <a href="https://github.com/ChoutesOS"><img src="https://img.shields.io/badge/ChoutesOS-5B18E5?style=for-the-badge&logo=archlinux&logoColor=white" alt="ChoutesOS"></a>
-  <img src="https://img.shields.io/badge/license-GPL--3.0-9660F8?style=for-the-badge" alt="GPL-3.0">
-  <img src="https://img.shields.io/badge/status-early%20development-3a3a4a?style=for-the-badge" alt="Early development">
-</p>
-
 ---
 
 ## About
 
-A clean, modern installer written in Python and Qt6. It works fully offline and guides the user from language selection to a finished installation.
+A modern installer written in Python and Qt 6 (QML). It works fully offline: it copies the live system to disk, configures it and installs GRUB (UEFI and BIOS).
 
 > **Status:** early development.
 
-## Installation steps
+## Steps
 
-1. Language and region
-2. Time zone and keyboard layout
-3. Disk and partitioning
-4. User account
+1. Welcome
+2. Language, time zone and keyboard layout
+3. Disk and file system (ext4 or Btrfs)
+4. Account
 5. Summary
 6. Installation
 
-## Related
+## Try it safely
 
-- [`choutesos`](https://github.com/ChoutesOS/choutesos): desktop and dotfiles
-- [`choutesos-iso`](https://github.com/ChoutesOS/choutesos-iso): ISO build profile
+The demo mode runs the full interface as a dry run. It changes nothing on your computer.
+
+    sudo pacman -S --needed pyside6 qt6-declarative
+    python -m choutesos_installer --demo
+
+Run the tests:
+
+    python -m unittest discover -s tests
+
+## Layout
+
+| Path | Purpose |
+|---|---|
+| `choutesos_installer/backend.py` | Installation logic (no Qt, unit tested) |
+| `choutesos_installer/system_info.py` | Disks, languages, time zones, keyboards |
+| `choutesos_installer/__main__.py` | Entry point and Qt controller |
+| `choutesos_installer/qml/` | The user interface |
+| `bin/choutesos-installer` | Launcher |
 
 ## License
 

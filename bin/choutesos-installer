@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+export PYTHONPATH="/usr/share/choutesos-installer${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m choutesos_installer "$@"
