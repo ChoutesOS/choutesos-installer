@@ -42,6 +42,18 @@ class HelperTests(unittest.TestCase):
         self.assertIn("en_US.UTF-8 UTF-8\n", out)
         self.assertIn("#de_DE.UTF-8 UTF-8", out)
 
+    def test_timezones_include_kuala_lumpur(self):
+        sample = "MY\t+0310+10142\tAsia/Kuala_Lumpur\tMalaysia (peninsula)\nSG\t+0117+10351\tAsia/Singapore\t\n"
+        zones = system_info.parse_zone_tab(sample, {"MY": "Malaysia", "SG": "Singapore"})
+        labels = {z["value"]: z["label"] for z in zones}
+        self.assertEqual(labels["Asia/Kuala_Lumpur"], "Kuala Lumpur, Malaysia")
+        self.assertIn("UTC", labels)
+
+    def test_system_timezones_include_kuala_lumpur(self):
+        if not backend.Path("/usr/share/zoneinfo/zone.tab").exists():
+            self.skipTest("no tzdata on this machine")
+        self.assertIn("Asia/Kuala_Lumpur", {z["value"] for z in system_info.list_timezones()})
+
     def test_set_grub(self):
         text = 'GRUB_TIMEOUT=10\n#GRUB_THEME="/path/to/gfxtheme"\nGRUB_DISTRIBUTOR="Arch"\n'
         text = backend.set_grub(text, "GRUB_TIMEOUT", "5")
@@ -98,6 +110,13 @@ class DryRunTests(unittest.TestCase):
         self.assertTrue(any(c.startswith("mkfs.btrfs") for c in cmds))
         self.assertTrue(any("subvol=@home" in c for c in cmds))
         self.assertTrue(any("grub-install --target=i386-pc" in c and c.endswith("/dev/nvme0n1") for c in cmds))
+
+    def test_live_leftovers_removed(self):
+        inst, _ = self.run_install(True, "ext4")
+        cmds = self.flat(inst)
+        self.assertTrue(any(c.endswith("userdel -rf live") for c in cmds))
+        self.assertTrue(any("pacman -Rns --noconfirm pyside6 mkinitcpio-archiso" in c for c in cmds))
+        self.assertTrue(any("89-choutesos-archiso-preset.hook" in c for c in cmds))
 
     def test_password_not_logged(self):
         logs = []

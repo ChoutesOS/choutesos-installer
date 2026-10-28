@@ -69,18 +69,39 @@ def list_languages() -> list[dict]:
     return [{"label": name, "value": loc} for name, loc in LANGUAGES]
 
 
-def list_timezones() -> list[dict]:
-    zones: set[str] = {"UTC"}
-    table = Path("/usr/share/zoneinfo/zone1970.tab")
+def _read_countries() -> dict[str, str]:
+    names: dict[str, str] = {}
+    table = Path("/usr/share/zoneinfo/iso3166.tab")
     if table.exists():
         for line in table.read_text(errors="ignore").splitlines():
-            if line and not line.startswith("#"):
-                parts = line.split("\t")
-                if len(parts) >= 3:
-                    zones.add(parts[2])
-    else:
-        zones.update(["Asia/Kuala_Lumpur", "Europe/London", "America/New_York", "Asia/Tokyo"])
-    return [{"label": z.replace("_", " "), "value": z} for z in sorted(zones)]
+            if line and not line.startswith("#") and "\t" in line:
+                code, name = line.split("\t", 1)
+                names[code] = name.strip()
+    return names
+
+
+def parse_zone_tab(text: str, countries: dict[str, str]) -> list[dict]:
+    """zone.tab lists one entry per country and city (zone1970.tab merges e.g. Kuala Lumpur into Singapore)."""
+    zones = [{"label": "UTC", "value": "UTC"}]
+    for line in text.splitlines():
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        if len(parts) < 3:
+            continue
+        code, tz = parts[0], parts[2]
+        city = tz.split("/")[-1].replace("_", " ")
+        country = countries.get(code, code)
+        zones.append({"label": f"{city}, {country}", "value": tz})
+    return sorted(zones, key=lambda z: z["label"])
+
+
+def list_timezones() -> list[dict]:
+    table = Path("/usr/share/zoneinfo/zone.tab")
+    if table.exists():
+        return parse_zone_tab(table.read_text(errors="ignore"), _read_countries())
+    return [{"label": z.replace("_", " "), "value": z} for z in
+            ("UTC", "Asia/Kuala_Lumpur", "Asia/Singapore", "Europe/London", "America/New_York", "Asia/Tokyo")]
 
 
 def list_keymaps() -> list[dict]:

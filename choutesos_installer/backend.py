@@ -35,6 +35,8 @@ LIVE_ONLY_FILES = [
     "/etc/systemd/system/choose-mirror.service",
     "/etc/systemd/system/etc-pacman.d-gnupg.mount",
     "/etc/systemd/system/livecd-talk.service",
+    "/etc/pacman.d/hooks/89-choutesos-archiso-preset.hook",
+    "/usr/local/bin/choutesos-archiso-preset",
     "/etc/motd",
     "/root/.zlogin",
     "/root/.automated_script.sh",
@@ -297,8 +299,10 @@ class Installer:
             self.write(f"/etc/mkinitcpio.d/{k}.preset",
                        '#ALL_config="/etc/mkinitcpio.conf"\n'
                        f'ALL_kver="/boot/vmlinuz-{k}"\n'
-                       "PRESETS=('default')\n"
-                       f'default_image="/boot/initramfs-{k}.img"\n')
+                       "PRESETS=('default' 'fallback')\n"
+                       f'default_image="/boot/initramfs-{k}.img"\n'
+                       f'fallback_image="/boot/initramfs-{k}-fallback.img"\n'
+                       'fallback_options="-S autodetect"\n')
         # files that only make sense on the live medium
         for f in LIVE_ONLY_FILES:
             r.run(["rm", "-f", self.t(f)])
@@ -307,6 +311,11 @@ class Installer:
         # settings that belong to the installed system only
         if OVERLAY_DIR.exists() or self.dry_run:
             r.run(["cp", "-a", f"{OVERLAY_DIR}/.", f"{TARGET}/"], check=False)
+        # the live user and the installer itself belong to the live medium only
+        r.run(["userdel", "-rf", "live"], chroot=True, check=False)
+        r.run(["groupdel", "live"], chroot=True, check=False)
+        r.run(["rm", "-rf", self.t("/home/live"), self.t("/usr/share/choutesos-installer"),
+               self.t("/usr/bin/choutesos-installer"), self.t("/usr/share/applications/choutesos-installer.desktop")])
         # locale, keyboard, time zone, host
         locales = [c.locale, "en_US.UTF-8"]
         self.write("/etc/locale.gen", uncomment_locales(self.read("/etc/locale.gen"), locales))
@@ -338,6 +347,8 @@ class Installer:
         # package signing keys
         r.run(["pacman-key", "--init"], chroot=True, check=False)
         r.run(["pacman-key", "--populate"], chroot=True, check=False)
+        # packages only the live medium needed
+        r.run(["pacman", "-Rns", "--noconfirm", "pyside6", "mkinitcpio-archiso"], chroot=True, check=False)
         # boot splash theme, then rebuild the initramfs
         if self.dry_run or self.target_exists("/usr/share/plymouth/themes/choutesos/choutesos.plymouth"):
             r.run(["plymouth-set-default-theme", "choutesos"], chroot=True, check=False)
