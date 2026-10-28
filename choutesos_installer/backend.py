@@ -68,6 +68,15 @@ def uncomment_locales(text: str, locales: list[str]) -> str:
     return "\n".join(out) + "\n"
 
 
+def set_grub(text: str, key: str, value: str) -> str:
+    """Sets KEY=value in the contents of /etc/default/grub, replacing a (commented) existing line."""
+    line = f'{key}={value}'
+    pattern = re.compile(rf"^#?\s*{re.escape(key)}=.*$", re.M)
+    if pattern.search(text):
+        return pattern.sub(lambda m: line, text, count=1)
+    return text.rstrip("\n") + "\n" + line + "\n"
+
+
 @dataclass
 class Config:
     disk: str = ""
@@ -338,11 +347,17 @@ class Installer:
         r = self.r
         grub = self.read("/etc/default/grub")
         if grub or self.dry_run:
-            grub = re.sub(r'^#?GRUB_DISTRIBUTOR=.*$', 'GRUB_DISTRIBUTOR="ChoutesOS"', grub, flags=re.M)
-            grub = re.sub(r'^GRUB_CMDLINE_LINUX_DEFAULT=.*$', 'GRUB_CMDLINE_LINUX_DEFAULT="quiet loglevel=3"', grub, flags=re.M)
-            grub = re.sub(r'^#?GRUB_DISABLE_OS_PROBER=.*$', 'GRUB_DISABLE_OS_PROBER=false', grub, flags=re.M)
-            if "GRUB_DISABLE_OS_PROBER" not in grub:
-                grub += "\nGRUB_DISABLE_OS_PROBER=false\n"
+            for key, value in [
+                ("GRUB_DISTRIBUTOR", '"ChoutesOS"'),
+                ("GRUB_CMDLINE_LINUX_DEFAULT", '"quiet loglevel=3"'),
+                ("GRUB_DISABLE_OS_PROBER", "false"),
+                ("GRUB_TIMEOUT", "5"),
+                ("GRUB_GFXMODE", "auto"),
+                ("GRUB_GFXPAYLOAD_LINUX", "keep"),
+            ]:
+                grub = set_grub(grub, key, value)
+            if self.dry_run or self.target_exists("/usr/share/grub/themes/choutesos/theme.txt"):
+                grub = set_grub(grub, "GRUB_THEME", '"/usr/share/grub/themes/choutesos/theme.txt"')
             self.write("/etc/default/grub", grub)
         if self.uefi:
             r.run(["grub-install", "--target=x86_64-efi", "--efi-directory=/boot/efi",

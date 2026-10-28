@@ -42,6 +42,16 @@ class HelperTests(unittest.TestCase):
         self.assertIn("en_US.UTF-8 UTF-8\n", out)
         self.assertIn("#de_DE.UTF-8 UTF-8", out)
 
+    def test_set_grub(self):
+        text = 'GRUB_TIMEOUT=10\n#GRUB_THEME="/path/to/gfxtheme"\nGRUB_DISTRIBUTOR="Arch"\n'
+        text = backend.set_grub(text, "GRUB_TIMEOUT", "5")
+        text = backend.set_grub(text, "GRUB_THEME", '"/x/theme.txt"')
+        text = backend.set_grub(text, "GRUB_GFXMODE", "auto")
+        self.assertIn("GRUB_TIMEOUT=5\n", text)
+        self.assertIn('\nGRUB_THEME="/x/theme.txt"\n', text)
+        self.assertTrue(text.endswith("GRUB_GFXMODE=auto\n"))
+        self.assertNotIn("#GRUB_THEME", text)
+
     def test_parse_disks(self):
         sample = json.dumps({"blockdevices": [
             {"name": "/dev/sda", "path": "/dev/sda", "size": 512110190592, "model": "Samsung SSD ", "type": "disk",
