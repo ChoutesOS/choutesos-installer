@@ -286,7 +286,7 @@ class Installer:
             kernels = ["linux"]
         for k in kernels:
             self.write(f"/etc/mkinitcpio.d/{k}.preset",
-                       'ALL_config="/etc/mkinitcpio.conf"\n'
+                       '#ALL_config="/etc/mkinitcpio.conf"\n'
                        f'ALL_kver="/boot/vmlinuz-{k}"\n'
                        "PRESETS=('default')\n"
                        f'default_image="/boot/initramfs-{k}.img"\n')
@@ -329,7 +329,9 @@ class Installer:
         # package signing keys
         r.run(["pacman-key", "--init"], chroot=True, check=False)
         r.run(["pacman-key", "--populate"], chroot=True, check=False)
-        # rebuild the initramfs
+        # boot splash theme, then rebuild the initramfs
+        if self.dry_run or self.target_exists("/usr/share/plymouth/themes/choutesos/choutesos.plymouth"):
+            r.run(["plymouth-set-default-theme", "choutesos"], chroot=True, check=False)
         r.run(["mkinitcpio", "-P"], chroot=True)
 
     def step_bootloader(self) -> None:

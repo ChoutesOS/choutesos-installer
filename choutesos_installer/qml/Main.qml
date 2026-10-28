@@ -178,7 +178,7 @@ ApplicationWindow {
                 Item { Layout.fillHeight: true }
 
                 Text {
-                    visible: controller.isDemo()
+                    visible: controller !== null && controller.isDemo()
                     text: "Demo mode: nothing will be changed on this computer."
                     color: "#F0B35A"
                     wrapMode: Text.WordWrap
