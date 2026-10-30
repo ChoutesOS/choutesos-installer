@@ -1,0 +1,12 @@
+#!/bin/sh
+# Runs the ChoutesOS installer or the first-boot setup alone on the screen, inside the
+# "cage" kiosk compositor. There is no desktop and no keyboard shortcut to leave it.
+#   choutesos-session installer   live medium
+#   choutesos-session setup       first start of the installed system
+export QT_QPA_PLATFORM=wayland
+export XDG_SESSION_TYPE=wayland
+export WLR_NO_HARDWARE_CURSORS=1
+case "${1:-installer}" in
+    setup) exec cage -s -- choutesos-installer --setup ;;
+    *)     exec cage -s -- choutesos-installer ;;
+esac

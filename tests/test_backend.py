@@ -16,7 +16,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(good().validate(), [])
 
     def test_bad_username(self):
-        for name in ["Root", "root", "1abc", "has space", "", "live"]:
+        for name in ["Root", "root", "1abc", "has space", "live"]:
             cfg = good(); cfg.username = name
             self.assertTrue(cfg.validate(), name)
 

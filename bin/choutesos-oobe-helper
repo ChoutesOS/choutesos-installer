@@ -1,0 +1,4 @@
+#!/bin/sh
+# Root helper of the first-boot setup, started through sudo (see /etc/sudoers.d/90-choutesos-setup).
+export PYTHONPATH=/usr/share/choutesos-installer
+exec python3 -m choutesos_installer.oobe_helper "$@"

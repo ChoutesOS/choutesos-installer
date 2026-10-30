@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=ChoutesOS Setup
+Comment=Set up ChoutesOS
+Exec=/usr/bin/choutesos-session setup
+Type=Application
+DesktopNames=ChoutesOS-Setup

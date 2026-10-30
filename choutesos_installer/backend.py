@@ -37,6 +37,7 @@ LIVE_ONLY_FILES = [
     "/etc/systemd/system/livecd-talk.service",
     "/etc/pacman.d/hooks/89-choutesos-archiso-preset.hook",
     "/usr/local/bin/choutesos-archiso-preset",
+    "/usr/share/wayland-sessions/choutesos-installer.desktop",
     "/etc/motd",
     "/root/.zlogin",
     "/root/.automated_script.sh",
@@ -103,10 +104,11 @@ class Config:
             errors.append("Choose a disk to install to.")
         if self.filesystem not in ("ext4", "btrfs"):
             errors.append("Unsupported file system.")
-        if not USERNAME_RE.match(self.username) or self.username in RESERVED_USERS:
-            errors.append("The username must start with a lowercase letter and use only a-z, 0-9, _ or -.")
-        if not self.password:
-            errors.append("Choose a password.")
+        if self.username:  # optional: without one, the first-boot setup creates the account
+            if not USERNAME_RE.match(self.username) or self.username in RESERVED_USERS:
+                errors.append("The username must start with a lowercase letter and use only a-z, 0-9, _ or -.")
+            if not self.password:
+                errors.append("Choose a password.")
         if not HOSTNAME_RE.match(self.hostname):
             errors.append("The computer name may only contain letters, digits and hyphens.")
         if check_paths and not Path("/usr/share/zoneinfo", self.timezone).exists():
@@ -327,21 +329,24 @@ class Installer:
         self.write("/etc/hostname", c.hostname + "\n")
         self.write("/etc/hosts", f"127.0.0.1 localhost\n::1 localhost\n127.0.1.1 {c.hostname}\n")
         # accounts
-        groups = [g for g in EXTRA_GROUPS if self.dry_run or re.search(rf"^{g}:", self.read("/etc/group"), re.M)]
-        cmd = ["useradd", "-m", "-s", "/bin/zsh", "-G", ",".join(groups)]
-        if c.fullname:
-            cmd += ["-c", c.fullname]
-        r.run(cmd + [c.username], chroot=True)
-        r.run(["chpasswd"], input=f"{c.username}:{c.password}\n", chroot=True, secret=True)
+        if c.username:
+            groups = [g for g in EXTRA_GROUPS if self.dry_run or re.search(rf"^{g}:", self.read("/etc/group"), re.M)]
+            cmd = ["useradd", "-m", "-s", "/bin/zsh", "-G", ",".join(groups)]
+            if c.fullname:
+                cmd += ["-c", c.fullname]
+            r.run(cmd + [c.username], chroot=True)
+            r.run(["chpasswd"], input=f"{c.username}:{c.password}\n", chroot=True, secret=True)
+            self.write("/etc/sudoers.d/10-wheel", "%wheel ALL=(ALL:ALL) ALL\n", "440")
+        else:
+            self.prepare_first_boot_setup()
         r.run(["passwd", "-l", "root"], chroot=True, check=False)
-        self.write("/etc/sudoers.d/10-wheel", "%wheel ALL=(ALL:ALL) ALL\n", "440")
         # services
         for unit in SERVICES:
             if self.dry_run or self.target_exists(f"/usr/lib/systemd/system/{unit}"):
                 r.run(["systemctl", "enable", unit], chroot=True, check=False)
         r.run(["systemctl", "set-default", "graphical.target"], chroot=True, check=False)
         r.run(["find", "/etc/systemd/system", "-xtype", "l", "-delete"], chroot=True, check=False)
-        if c.autologin:
+        if c.autologin and c.username:
             self.write("/etc/sddm.conf.d/30-autologin.conf",
                        f"[Autologin]\nUser={c.username}\nSession=hyprland\n")
         # package signing keys
@@ -353,6 +358,22 @@ class Installer:
         if self.dry_run or self.target_exists("/usr/share/plymouth/themes/choutesos/choutesos.plymouth"):
             r.run(["plymouth-set-default-theme", "choutesos"], chroot=True, check=False)
         r.run(["mkinitcpio", "-P"], chroot=True)
+
+    def prepare_first_boot_setup(self) -> None:
+        """No account yet: on first boot a temporary user opens the fullscreen setup, which creates the real one."""
+        r = self.r
+        r.run(["mkdir", "-p", self.t("/usr/share/choutesos-setup/skel"), self.t("/var/lib/choutesos/oobe"),
+               self.t("/etc/sddm.conf.d")])
+        groups = [g for g in ("video", "audio", "input", "network")
+                  if self.dry_run or re.search(rf"^{g}:", self.read("/etc/group"), re.M)]
+        r.run(["useradd", "-m", "-k", "/usr/share/choutesos-setup/skel", "-s", "/bin/bash",
+               "-G", ",".join(groups), "-c", "ChoutesOS Setup", "choutesos-setup"], chroot=True)
+        self.write("/etc/sudoers.d/90-choutesos-setup",
+                   "choutesos-setup ALL=(root) NOPASSWD: /usr/lib/choutesos/oobe-helper *, /usr/bin/nmcli *\n", "440")
+        self.write("/etc/sddm.conf.d/40-choutesos-oobe.conf",
+                   "[Autologin]\nUser=choutesos-setup\nSession=choutesos-setup\nRelogin=false\n")
+        self.write("/var/lib/choutesos/oobe/stage", "language\n")
+        r.run(["chmod", "755", self.t("/var/lib/choutesos/oobe")])
 
     def step_bootloader(self) -> None:
         r = self.r

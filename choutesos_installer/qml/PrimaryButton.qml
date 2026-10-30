@@ -7,16 +7,21 @@ Rectangle {
     property bool active: true
     signal clicked()
 
-    implicitWidth: label.implicitWidth + 56
-    implicitHeight: 46
-    radius: 12
-    opacity: btn.active ? 1 : 0.4
+    implicitWidth: Math.max(label.implicitWidth + 64, 150)
+    implicitHeight: 48
+    radius: 24
+    opacity: btn.active ? 1 : 0.35
+    scale: (mouse.pressed && btn.active) ? 0.97 : 1
     border.width: 1
     border.color: btn.primary ? "#9660F8" : "#34304A"
     color: {
         if (btn.primary) return (mouse.containsMouse && btn.active) ? "#7A3FF0" : "#5B18E5"
-        return (mouse.containsMouse && btn.active) ? "#2A2640" : "#1E1B30"
+        return (mouse.containsMouse && btn.active) ? "#2A2640" : "#1A1729"
     }
+
+    Behavior on color { ColorAnimation { duration: 140 } }
+    Behavior on scale { NumberAnimation { duration: 90 } }
+    Behavior on opacity { NumberAnimation { duration: 200 } }
 
     Text {
         id: label

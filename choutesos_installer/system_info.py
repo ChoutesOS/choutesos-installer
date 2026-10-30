@@ -26,7 +26,7 @@ LANGUAGES = [
 COMMON_KEYMAPS = ["us", "uk", "de", "fr", "es", "it", "pt-latin1", "br-abnt2", "ru", "tr", "pl2", "jp106", "dvorak"]
 
 
-def parse_disks(lsblk_json: str) -> list[dict]:
+def parse_disks(lsblk_json: str, min_gb: int = 8) -> list[dict]:
     """Turns `lsblk -J -b` output into a list of installable disks (the live medium is excluded)."""
     data = json.loads(lsblk_json)
     disks = []
@@ -34,7 +34,7 @@ def parse_disks(lsblk_json: str) -> list[dict]:
         if dev.get("type") != "disk":
             continue
         size = int(dev.get("size") or 0)
-        if size < 8 * 1024**3:
+        if size < min_gb * 1000**3:
             continue
 
         def mountpoints(node: dict) -> list[str]:
@@ -55,12 +55,12 @@ def parse_disks(lsblk_json: str) -> list[dict]:
     return disks
 
 
-def list_disks() -> list[dict]:
+def list_disks(min_gb: int = 8) -> list[dict]:
     try:
         out = subprocess.run(
             ["lsblk", "-J", "-b", "-p", "-o", "NAME,PATH,SIZE,MODEL,TYPE,RM,TRAN,MOUNTPOINTS"],
             capture_output=True, text=True, check=True).stdout
-        return parse_disks(out)
+        return parse_disks(out, min_gb)
     except (OSError, subprocess.CalledProcessError, ValueError):
         return []
 
