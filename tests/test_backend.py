@@ -115,7 +115,8 @@ class DryRunTests(unittest.TestCase):
         inst, _ = self.run_install(True, "ext4")
         cmds = self.flat(inst)
         self.assertTrue(any(c.endswith("userdel -rf live") for c in cmds))
-        self.assertTrue(any("pacman -Rns --noconfirm pyside6 mkinitcpio-archiso" in c for c in cmds))
+        self.assertTrue(any("pacman -Rns --noconfirm mkinitcpio-archiso" in c for c in cmds))
+        self.assertFalse(any("pacman -Rns --noconfirm pyside6" in c for c in cmds))
         self.assertTrue(any("89-choutesos-archiso-preset.hook" in c for c in cmds))
 
     def test_password_not_logged(self):

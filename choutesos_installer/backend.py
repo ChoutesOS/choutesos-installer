@@ -353,7 +353,8 @@ class Installer:
         r.run(["pacman-key", "--init"], chroot=True, check=False)
         r.run(["pacman-key", "--populate"], chroot=True, check=False)
         # packages only the live medium needed
-        r.run(["pacman", "-Rns", "--noconfirm", "pyside6", "mkinitcpio-archiso"], chroot=True, check=False)
+        # PySide6 is still required by the first-boot setup session.
+        r.run(["pacman", "-Rns", "--noconfirm", "mkinitcpio-archiso"], chroot=True, check=False)
         # boot splash theme, then rebuild the initramfs
         if self.dry_run or self.target_exists("/usr/share/plymouth/themes/choutesos/choutesos.plymouth"):
             r.run(["plymouth-set-default-theme", "choutesos"], chroot=True, check=False)
